@@ -1,9 +1,13 @@
 from http.client import responses
 import sys
+from sqlalchemy import false
 sys.path.append("..")
 
+from starlette import status
+from starlette.responses import RedirectResponse
+
 from uuid import UUID
-from fastapi import Depends, HTTPException, APIRouter, Request
+from fastapi import Depends, HTTPException, APIRouter, Request, Form
 import models
 from database import engine, SessionLocal
 from sqlalchemy.orm import Session
@@ -30,102 +34,78 @@ def get_db():
     finally:
         db.close()
 
-class Todo(BaseModel):
-    titulo: str
-    descricao: Optional[str] 
-    prioridade: int = Field(gt=0, lt=6, description="A prioridade deve estar entre 1-5")
-    completo: bool   
+@router.get("/", response_class=HTMLResponse)
+async def lerTudoDoUsuario(request: Request, db: Session = Depends(get_db)):
 
-@router.get("/test")
-async def test(request: Request):
-    return templates.TemplateResponse("register.html", {"request": request})
+    todos = db.query(models.Todos).filter(models.Todos.donoId == 1).all()
 
-#Ler todos os todos
-@router.get("/")
-async def lerTodos(db: Session = Depends(get_db)):
-    return db.query(models.Todos).all()
+    return templates.TemplateResponse("home.html", {"request": request, "todos": todos})
 
-@router.get("/usuario")
-async def lerTudoPorUsuario(user: dict = Depends(get_usuario_atual), db: Session = Depends(get_db)):
-    if user is None:
-        raise getUsuarioException()
-    return db.query(models.Todos).filter(models.Todos.donoId == user.get("id")).all()
+@router.get("/add-todo", response_class=HTMLResponse)
+async def addNovoTodo(request: Request):
+    return templates.TemplateResponse("add-todo.html", {"request": request})
 
-#Encontrar todo pelo id
-@router.get("/{todoId}")
-async def lerTodo(todoId: int, user: dict = Depends(get_usuario_atual), db: Session = Depends(get_db)):
-    if user is None:
-        raise getUsuarioException
+@router.post("/add-todo", response_class=HTMLResponse)
+async def criarTodo(request: Request, titulo: str = Form(...), descricao: str = Form(...),
+    prioridade: int = Form(...), db: Session = Depends(get_db)):
 
-    todoModel = db.query(models.Todos).filter(models.Todos.id == todoId)\
-    .filter(models.Todos.donoId == user.get("id")).first()
-
-    if todoModel is not None:
-        return todoModel
-
-    raise http_exception()
-
-#Adicionar Todo para o db
-@router.post("/")
-async def criarTodo(todo: Todo, user: dict = Depends(get_usuario_atual), db: Session = Depends(get_db)):
-    if user is None:
-        raise getUsuarioException()
     todoModel = models.Todos()
-    todoModel.titulo = todo.titulo
-    todoModel.descricao = todo.descricao
-    todoModel.prioridade = todo.prioridade
-    todoModel.completo = todo.completo
-    todoModel.donoId = user.get("id")
+    todoModel.titulo = titulo
+    todoModel.descricao = descricao
+    todoModel.prioridade = prioridade
+    todoModel.completo = False
+    todoModel.donoId = 1
 
     db.add(todoModel)
     db.commit()
 
-    succesful_response(201)
+    return RedirectResponse(url="/todos", status_code=status.HTTP_302_FOUND)
 
-#Atualizar todo no db
-@router.put("/{todoId}")
-async def atualizarTodo(todoId: int, todo: Todo, user: dict = Depends(get_usuario_atual), db: Session = Depends(get_db)):
-    if user is None:
-        raise getUsuarioException()
+@router.get("/edit-todo/{todoId}", response_class=HTMLResponse)
+async def editTodo(request: Request, todoId: int, db: Session = Depends(get_db)):
+
+    todo = db.query(models.Todos).filter(models.Todos.id == todoId).first()
+
+    return templates.TemplateResponse("edit-todo.html", {"request": request, "todo": todo})
+
+@router.post("/edit-todo/{todoId}", response_class=HTMLResponse)
+async def atualizarTodo(request: Request, todoId: int, titulo: str =  Form(...),
+    descricao: str = Form(...), prioridade: int = Form(...), db: Session = Depends(get_db)):
+
+    todoModel = db.query(models.Todos).filter(models.Todos.id == todoId).first()
+
+    todoModel.titulo = titulo
+    todoModel.descricao = descricao
+    todoModel.prioridade = prioridade
     
-    todoModel = db.query(models.Todos).filter(models.Todos.id == todoId).\
-        filter(models.Todos.donoId == user.get("id")).first()
-
-    if todoModel is None:
-        raise http_exception()
-
-    todoModel.titulo = todo.titulo
-    todoModel.descricao = todo.descricao
-    todoModel.prioridade = todo.prioridade
-    todoModel.completo = todo.completo
-
     db.add(todoModel)
     db.commit()
 
-    succesful_response(200)
+    return RedirectResponse(url="/todos", status_code=status.HTTP_302_FOUND)
 
-#deleter todo no db
-@router.delete("/{todoId}")
-async def deletarTodo(todoId: int, user: dict = Depends(get_usuario_atual), db: Session = Depends(get_db)):
-    if user is None:
-        raise getUsuarioException()
+@router.get("/deletar/{todoId}")
+async def excluirTodo(request: Request, todoId: int, db: Session = Depends(get_db)):
 
     todoModel = db.query(models.Todos).filter(models.Todos.id == todoId).\
-        filter(models.Todos.donoId == user.get("id")).first()
+        filter(models.Todos.donoId == 1).first()
 
     if todoModel is None:
-        raise http_exception()
+        return RedirectResponse(url="/todos", status_code=status.HTTP_302_FOUND)
 
-    db.query(models.Todos).filter(models.Todos.id).delete()
+    db.query(models.Todos).filter(models.Todos.id == todoId).delete()
+
     db.commit()
 
-    succesful_response(200)
+    return RedirectResponse(url="/todos", status_code=status.HTTP_302_FOUND)
 
-def http_exception():
-    return HTTPException(status_code=404, detail="Todo não encontrado")
+@router.get("/completo/{todoId}", response_class=HTMLResponse)
+async def completarTodo(request: Request, todoId: int, db: Session = Depends(get_db)):
 
-def succesful_response(status_code: int):
-    return{
-        'status': status_code,
-        'transaction': 'Successful'
-    }
+    todo = db.query(models.Todos).filter(models.Todos.id == todoId).first()
+
+    todo.completo = not todo.completo
+
+    db.add(todo)
+    db.commit()
+
+    return RedirectResponse(url="/todos", status_code=status.HTTP_302_FOUND)

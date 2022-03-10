@@ -1,86 +1,51 @@
-<!DOCTYPE html>
-<html lang="en">
+{% include 'layout.html' %}
 
-<head>
-    <link rel="stylesheet" type="text/css" href="{{ url_for('static', path='/todo/css/base.css') }}">
-    <link rel="stylesheet" type="text/css" href="{{ url_for('static', path='/todo/css/bootstrap.css') }}">
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <title>TodoApp</title>
-</head>
+<div class="container">
+    <div class="card text-center">
+        <div class="card-header">
+            Seus Todos
+        </div>
+        <div class="card-body">
+            <h5 class="card-title">Lista dos seus Todos!</h5>
+            <p class="card-text">Informação em relação as coisas que precisam ser completas</p>
 
-<body>
-    <div>
-        <nav class="navbar navbar-expand-md navbar-dark main-color fixed-top">
-            <a class="navbar-brand" href="#">Todo App</a>
-            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ui class="navbar-nav">
-                    <li class="nav-item active">
-                        <a class="nav-link" href="#"> Home </a>
-                    </li>
-                </ui>
-            </div>
-        </nav>
-    </div>
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th scope="col">#</th>
+                        <th scope="col">Informação</th>
+                        <th scope="col">Ações</th>
+                    </tr>
+                </thead>
 
-    <div class="container">
-        <div class="card text-center">
-            <div class="card-header">
-                Seus Todos
-            </div>
-            <div class="card-body">
-                <h5 class="card-title">Lista dos seus Todos!</h5>
-                <p class="card-text">Informação em relação as coisas que precisam ser completas</p>
+                <tbody>
 
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th scope="col">#</th>
-                            <th scope="col">Informação</th>
-                            <th scope="col">Ações</th>
-                        </tr>
-                    </thead>
+                    {% for todo in todos %} {% if todo.completo == False %}
+                    <tr class="pointer">
+                        <td>{{loop.index}}</td>
+                        <td>{{todo.titulo}}</td>
+                        <td>
+                            <button onclick="window.location.href='completo/{{todo.id}}'" type="button" class="btn btn-success">Completo</button>
+                            <button onclick="window.location.href='edit-todo/{{todo.id}}'" type="button" class="btn btn-info">Editar</button>
+                        </td>
+                    </tr>
 
-                    <tbody>
-                        <tr class="pointer">
-                            <td>1</td>
-                            <td>Leve o lixo para fora</td>
-                            <td>
-                                <button type="button" class="btn btn-success">Completo</button>
-                                <button type="button" class="btn btn-danger">Excluir</button>
-                            </td>
-                        </tr>
-                        <tr class="pointer">
-                            <td>2</td>
-                            <td>Leve o lixo para fora</td>
-                            <td>
-                                <button type="button" class="btn btn-success">Completo</button>
-                                <button type="button" class="btn btn-danger">Excluir</button>
-                            </td>
-                        </tr>
-                        <tr class="pointer">
-                            <td>3</td>
-                            <td>Leve o lixo para fora</td>
-                            <td>
-                                <button type="button" class="btn btn-success">Completo</button>
-                                <button type="button" class="btn btn-danger">Excluir</button>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+                    {% else %}
+                    <tr class="pointer alert alert-success">
+                        <td>{{loop.index}}</td>
+                        <td class="strike-through-td">{{todo.titulo}}</td>
+                        <td>
+                            <button onclick="window.location.href='completo/{{todo.id}}'" type="button" class="btn btn-success">Desfazer</button>
+                            <button onclick="window.location.href='edit-todo/{{todo.id}}'" type="button" class="btn btn-info">Editar</button>
+                        </td>
+                    </tr>
+                    {% endif %} {% endfor %}
 
-                <a class="btn btn-primary" href="#">Adicione um novo Todo!</a>
+                </tbody>
+            </table>
 
-            </div>
+            <a href="add-todo" class="btn btn-primary" href="#">Adicione um novo Todo!</a>
+
         </div>
     </div>
-
-    <script src="{{ url_for('static', path='/todo/js/jquery-slim.js') }}"></script>
-    <script src="{{ url_for('static', path='/todo/js/popper.js') }}"></script>
-    <script src="{{ url_for('static', path='/todo/js/bootstrap.js') }}"></script>
-</body>
-
-</html>
+</div>
