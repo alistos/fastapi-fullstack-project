@@ -1,0 +1,1 @@
+# fastapi-fullstack-project
