@@ -6,7 +6,12 @@
             Registrar
         </div>
         <div class="card-body">
-            <form>
+            {% if msg %}
+            <div class="alert alert-danger" role="alert">
+                {{msg}}
+            </div>
+            {% endif %}
+            <form method="POST" action="/auth/registrar">
                 <div class="form-row">
                     <div class="form-group col-md-6">
                         <label>Email</label>
@@ -20,26 +25,26 @@
                 <div class="form-row">
                     <div class="form-group col-md-6">
                         <label>Primeiro Nome</label>
-                        <input type="text" class="form-control" name="firstname" required>
+                        <input type="text" class="form-control" name="primeiroNome" required>
                     </div>
                     <div class="form-group col-md-6">
                         <label>Último Nome</label>
-                        <input type="text" class="form-control" name="lastname" required>
+                        <input type="text" class="form-control" name="ultimoNome" required>
                     </div>
                 </div>
                 <div class="form-group">
                     <label>Senha</label>
-                    <input type="password" class="form-control" name="password" required>
+                    <input type="password" class="form-control" name="senha" required>
                 </div>
                 <div class="form-group">
                     <label>Verificar Senha</label>
-                    <input type="password" class="form-control" name="password2" required>
+                    <input type="password" class="form-control" name="senha2" required>
                 </div>
                 <button type="submit" class="btn btn-primary">Registrar</button>
             </form>
         </div>
         <div class="card-footer text-muted">
-            <a href="#">Já tenho uma conta!</a>
+            <a href="/auth">Já tenho uma conta!</a>
         </div>
     </div>
 </div>

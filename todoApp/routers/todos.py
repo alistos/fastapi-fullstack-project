@@ -6,14 +6,11 @@ sys.path.append("..")
 from starlette import status
 from starlette.responses import RedirectResponse
 
-from uuid import UUID
-from fastapi import Depends, HTTPException, APIRouter, Request, Form
+from fastapi import Depends, APIRouter, Request, Form
 import models
 from database import engine, SessionLocal
 from sqlalchemy.orm import Session
-from pydantic import BaseModel, Field
-from typing import Optional
-from .auth import get_usuario_atual, getUsuarioException
+from .auth import get_usuario_atual
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
@@ -37,24 +34,36 @@ def get_db():
 @router.get("/", response_class=HTMLResponse)
 async def lerTudoDoUsuario(request: Request, db: Session = Depends(get_db)):
 
-    todos = db.query(models.Todos).filter(models.Todos.donoId == 1).all()
+    user = await get_usuario_atual(request)
+    if user is None:
+        return RedirectResponse(url="/auth", status_code=status.HTTP_302_FOUND)
 
-    return templates.TemplateResponse("home.html", {"request": request, "todos": todos})
+    todos = db.query(models.Todos).filter(models.Todos.donoId == user.get("id")).all()
+
+    return templates.TemplateResponse("home.html", {"request": request, "todos": todos, "user": user})
 
 @router.get("/add-todo", response_class=HTMLResponse)
 async def addNovoTodo(request: Request):
-    return templates.TemplateResponse("add-todo.html", {"request": request})
+    user = await get_usuario_atual(request)
+    if user is None:
+        return RedirectResponse(url="/auth", status_code=status.HTTP_302_FOUND)
+
+    return templates.TemplateResponse("add-todo.html", {"request": request, "user": user})
 
 @router.post("/add-todo", response_class=HTMLResponse)
 async def criarTodo(request: Request, titulo: str = Form(...), descricao: str = Form(...),
     prioridade: int = Form(...), db: Session = Depends(get_db)):
+
+    user = await get_usuario_atual(request)
+    if user is None:
+        return RedirectResponse(url="/auth", status_code=status.HTTP_302_FOUND)
 
     todoModel = models.Todos()
     todoModel.titulo = titulo
     todoModel.descricao = descricao
     todoModel.prioridade = prioridade
     todoModel.completo = False
-    todoModel.donoId = 1
+    todoModel.donoId = user.get("id")
 
     db.add(todoModel)
     db.commit()
@@ -64,13 +73,21 @@ async def criarTodo(request: Request, titulo: str = Form(...), descricao: str = 
 @router.get("/edit-todo/{todoId}", response_class=HTMLResponse)
 async def editTodo(request: Request, todoId: int, db: Session = Depends(get_db)):
 
+    user = await get_usuario_atual(request)
+    if user is None:
+        return RedirectResponse(url="/auth", status_code=status.HTTP_302_FOUND)
+
     todo = db.query(models.Todos).filter(models.Todos.id == todoId).first()
 
-    return templates.TemplateResponse("edit-todo.html", {"request": request, "todo": todo})
+    return templates.TemplateResponse("edit-todo.html", {"request": request, "todo": todo, "user": user})
 
 @router.post("/edit-todo/{todoId}", response_class=HTMLResponse)
 async def atualizarTodo(request: Request, todoId: int, titulo: str =  Form(...),
     descricao: str = Form(...), prioridade: int = Form(...), db: Session = Depends(get_db)):
+
+    user = await get_usuario_atual(request)
+    if user is None:
+        return RedirectResponse(url="/auth", status_code=status.HTTP_302_FOUND)
 
     todoModel = db.query(models.Todos).filter(models.Todos.id == todoId).first()
 
@@ -86,8 +103,12 @@ async def atualizarTodo(request: Request, todoId: int, titulo: str =  Form(...),
 @router.get("/deletar/{todoId}")
 async def excluirTodo(request: Request, todoId: int, db: Session = Depends(get_db)):
 
+    user = await get_usuario_atual(request)
+    if user is None:
+        return RedirectResponse(url="/auth", status_code=status.HTTP_302_FOUND)
+
     todoModel = db.query(models.Todos).filter(models.Todos.id == todoId).\
-        filter(models.Todos.donoId == 1).first()
+        filter(models.Todos.donoId == user.get("id")).first()
 
     if todoModel is None:
         return RedirectResponse(url="/todos", status_code=status.HTTP_302_FOUND)
@@ -100,6 +121,10 @@ async def excluirTodo(request: Request, todoId: int, db: Session = Depends(get_d
 
 @router.get("/completo/{todoId}", response_class=HTMLResponse)
 async def completarTodo(request: Request, todoId: int, db: Session = Depends(get_db)):
+
+    user = await get_usuario_atual(request)
+    if user is None:
+        return RedirectResponse(url="/auth", status_code=status.HTTP_302_FOUND)
 
     todo = db.query(models.Todos).filter(models.Todos.id == todoId).first()
 
